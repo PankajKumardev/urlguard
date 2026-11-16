@@ -1,0 +1,12 @@
+URLGuard cleaning summary
+Original rows: 235795
+Removed invalid rows: 0
+Duplicate count: 571
+Removed conflicting-label rows: 0
+Final rows: 235224
+Legitimate URL count: 134850
+Phishing URL count: 100374
+Modeling rows: 30000
+Training rows: 21000
+Validation rows: 4500
+Test rows: 4500

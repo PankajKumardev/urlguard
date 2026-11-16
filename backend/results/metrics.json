@@ -1,0 +1,295 @@
+{
+  "project": "URLGuard \u2014 Machine Learning Based Phishing URL Detection System",
+  "college": "Jaypee Institute of Information Technology, Noida",
+  "department": "Computer Applications",
+  "course": "Machine Learning Lab",
+  "program": "MCA, 1st Year, 1st Semester",
+  "generated_at": "2026-11-04 04:59:46 UTC",
+  "sklearn_version": "1.9.1",
+  "pandas_version": "3.1.0",
+  "numpy_version": "2.4.6",
+  "python_version": "3.11.15",
+  "random_state": 42,
+  "sample_size_target": 30000,
+  "near_tie_f1": 0.005,
+  "near_tie_recall": 0.01,
+  "simplicity_order": [
+    "Logistic Regression",
+    "K-Nearest Neighbors",
+    "Random Forest"
+  ],
+  "positive_class": {
+    "name": "PHISHING",
+    "value": 1
+  },
+  "negative_class": {
+    "name": "SAFE",
+    "value": 0
+  },
+  "model_name": "Random Forest",
+  "selection_reason": "Random Forest had the highest validation F1-score for the phishing class (0.9924).",
+  "uses_internal_scaler": false,
+  "feature_names": [
+    "url_length",
+    "dot_count",
+    "hyphen_count",
+    "digit_count",
+    "at_count",
+    "subdomain_count",
+    "uses_https",
+    "is_ip_address",
+    "suspicious_keyword_count",
+    "question_mark_count",
+    "equals_count",
+    "path_length"
+  ],
+  "features": [
+    {
+      "name": "url_length",
+      "label": "URL length",
+      "description": "Total number of characters in the normalized URL.",
+      "why": "Some phishing links are very long because they hide the real destination or add extra tracking text."
+    },
+    {
+      "name": "dot_count",
+      "label": "Number of dots",
+      "description": "How many '.' characters appear in the full URL string.",
+      "why": "Extra dots can come from extra host labels or from a long, messy link."
+    },
+    {
+      "name": "hyphen_count",
+      "label": "Number of hyphens",
+      "description": "How many '-' characters appear in the full URL string.",
+      "why": "Hyphens are sometimes used to imitate a real brand name inside a hostname or path."
+    },
+    {
+      "name": "digit_count",
+      "label": "Number of digits",
+      "description": "How many numeric characters appear in the URL.",
+      "why": "Automatically generated phishing links often contain many digits."
+    },
+    {
+      "name": "at_count",
+      "label": "Number of @ symbols",
+      "description": "How many '@' characters appear in the URL.",
+      "why": "An @ symbol can make the real hostname harder to notice, because the browser uses the host after the @."
+    },
+    {
+      "name": "subdomain_count",
+      "label": "Number of subdomains",
+      "description": "Extra hostname labels beyond the last two labels, after a leading www is removed. example.com and www.example.com both count as 0. login.example.com counts as 1. This is a simple approximation and does not understand suffixes such as co.uk. IP addresses count as 0. www is removed because every legitimate row in this dataset starts with www.",
+      "why": "Extra subdomains are sometimes used to imitate a trusted brand."
+    },
+    {
+      "name": "uses_https",
+      "label": "HTTPS usage",
+      "description": "1 if the scheme is https, otherwise 0. A missing scheme is treated as https before this check.",
+      "why": "The scheme is one signal. HTTPS encrypts traffic, but phishing websites can use HTTPS too, so it is not proof of safety."
+    },
+    {
+      "name": "is_ip_address",
+      "label": "IP address usage",
+      "description": "1 if the hostname is an IPv4 or IPv6 address according to Python's ipaddress module, otherwise 0.",
+      "why": "Most public websites use a domain name. A raw IP address can be suspicious, though it is not always malicious."
+    },
+    {
+      "name": "suspicious_keyword_count",
+      "label": "Suspicious keywords",
+      "description": "Total substring count of these words, matched without regard to case: login, verify, update, secure, account, confirm, password. A word inside a longer word can also match. These are weak indicators, not proof.",
+      "why": "Words such as login, verify, and password appear in many phishing lures. They also appear on real login pages."
+    },
+    {
+      "name": "question_mark_count",
+      "label": "Number of question marks",
+      "description": "How many '?' characters appear in the URL.",
+      "why": "A question mark usually starts a query string, which can carry extra parameters."
+    },
+    {
+      "name": "equals_count",
+      "label": "Number of equals signs",
+      "description": "How many '=' characters appear in the URL.",
+      "why": "Equals signs usually join a query parameter to its value."
+    },
+    {
+      "name": "path_length",
+      "label": "URL path length",
+      "description": "Number of characters in the URL path returned by urllib.parse, including the leading slash when one is present.",
+      "why": "A very long path can be used to bury the real destination of a link."
+    }
+  ],
+  "hyperparameters": {
+    "Logistic Regression": {
+      "scaler": "StandardScaler inside a Pipeline, fit on training data only",
+      "solver": "lbfgs",
+      "max_iter": 1000,
+      "random_state": 42
+    },
+    "K-Nearest Neighbors": {
+      "scaler": "StandardScaler inside a Pipeline, fit on training data only",
+      "n_neighbors": 5
+    },
+    "Random Forest": {
+      "n_estimators": 100,
+      "max_depth": 20,
+      "random_state": 42,
+      "n_jobs": -1,
+      "scaler": "None. Trees do not need scaled features."
+    }
+  },
+  "dataset": {
+    "name": "PhiUSIIL Phishing URL (Website)",
+    "uci_id": 967,
+    "official_url": "https://archive.ics.uci.edu/dataset/967/phiusiil+phishing+url+dataset",
+    "citation": "Prasad, A. & Chandra, S. (2024). PhiUSIIL Phishing URL (Website) [Dataset]. UCI Machine Learning Repository. https://doi.org/10.1016/j.cose.2023.103545.",
+    "paper": "Prasad, A., & Chandra, S. (2023). PhiUSIIL: A diverse security profile empowered phishing URL detection framework based on similarity index and incremental learning. Computers & Security, 103545. https://doi.org/10.1016/j.cose.2023.103545",
+    "authors": "Arvind Prasad and Shalini Chandra",
+    "license": "Creative Commons Attribution 4.0 International (CC BY 4.0)",
+    "license_url": "https://creativecommons.org/licenses/by/4.0/",
+    "doi": "https://doi.org/10.1016/j.cose.2023.103545",
+    "confirmation_method": "The official UCI dataset page states 'Label 1 corresponds to a legitimate URL, label 0 to a phishing URL'. The downloaded file matches the published size: 134850 rows with label 1 and 100945 rows with label 0.",
+    "official_label_sentence": "Label 1 corresponds to a legitimate URL, label 0 to a phishing URL",
+    "published_rows": 235795,
+    "published_legitimate": 134850,
+    "published_phishing": 100945,
+    "file_sha256": "0112072734d5e58a0c319e82f3aea97cb6ae2803c21a32d1d52446afa382c40d",
+    "download_method": "ucimlrepo fetch_ucirepo(id=967)"
+  },
+  "label_mapping": {
+    "original": "1 = legitimate, 0 = phishing",
+    "project": "0 = SAFE, 1 = PHISHING",
+    "conversion": "phishing_label = 1 - original_label"
+  },
+  "cleaning": {
+    "original_rows": 235795,
+    "file_label_1": 134850,
+    "file_label_0": 100945,
+    "removed_missing": 0,
+    "removed_bad_label": 0,
+    "removed_invalid": 0,
+    "conflict_url_count": 0,
+    "removed_conflicts": 0,
+    "duplicate_count": 571,
+    "removed_invalid_rows": 0,
+    "rows_before_label_conversion": 235224,
+    "min_url_length": 11,
+    "max_url_length": 6097,
+    "urls_longer_than_2048": 8,
+    "final_rows": 235224,
+    "safe_count": 134850,
+    "phishing_count": 100374
+  },
+  "counts": {
+    "modeling_rows": 30000,
+    "modeling_safe": 17199,
+    "modeling_phishing": 12801,
+    "train_rows": 21000,
+    "validation_rows": 4500,
+    "test_rows": 4500,
+    "train_safe": 12039,
+    "train_phishing": 8961,
+    "validation_safe": 2580,
+    "validation_phishing": 1920,
+    "test_safe": 2580,
+    "test_phishing": 1920,
+    "overlap_count": 0
+  },
+  "validation_comparison": [
+    {
+      "model": "Logistic Regression",
+      "accuracy": 0.965556,
+      "precision": 0.9873,
+      "recall": 0.93125,
+      "f1": 0.958456
+    },
+    {
+      "model": "K-Nearest Neighbors",
+      "accuracy": 0.988889,
+      "precision": 0.994709,
+      "recall": 0.979167,
+      "f1": 0.986877
+    },
+    {
+      "model": "Random Forest",
+      "accuracy": 0.993556,
+      "precision": 0.998419,
+      "recall": 0.986458,
+      "f1": 0.992402
+    }
+  ],
+  "selected_validation": {
+    "accuracy": 0.993556,
+    "precision": 0.998419,
+    "recall": 0.986458,
+    "f1": 0.992402
+  },
+  "test_metrics": {
+    "accuracy": 0.996444,
+    "precision": 0.998429,
+    "recall": 0.993229,
+    "f1": 0.995822,
+    "confusion_matrix": [
+      [
+        2577,
+        3
+      ],
+      [
+        13,
+        1907
+      ]
+    ],
+    "true_negative": 2577,
+    "false_positive": 3,
+    "false_negative": 13,
+    "true_positive": 1907
+  },
+  "prediction_example": {
+    "source": "held-out test set",
+    "url_display": "http://55****om/[redacted-path]",
+    "url_was_redacted": true,
+    "display_was_shortened": false,
+    "features": {
+      "url_length": 17,
+      "dot_count": 1,
+      "hyphen_count": 0,
+      "digit_count": 2,
+      "at_count": 0,
+      "subdomain_count": 0,
+      "uses_https": 0,
+      "is_ip_address": 0,
+      "suspicious_keyword_count": 0,
+      "question_mark_count": 0,
+      "equals_count": 0,
+      "path_length": 0
+    },
+    "feature_vector": [
+      17,
+      1,
+      0,
+      2,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "true_label": "PHISHING",
+    "predicted_label": "PHISHING",
+    "phishing_probability": 1.0,
+    "correct": true,
+    "note": "The original phishing URL is not printed. Features were calculated on the full URL before redaction."
+  },
+  "split": {
+    "train": 0.7,
+    "validation": 0.15,
+    "test": 0.15,
+    "method": "stratified"
+  },
+  "warnings": [
+    "Scores describe a stratified subset of about 30,000 real records, not the full 235,795-row dataset.",
+    "A random split of URLs can still place related domains in both training and testing.",
+    "The phishing probability is a model score, not a calibrated guarantee of real-world risk."
+  ]
+}
