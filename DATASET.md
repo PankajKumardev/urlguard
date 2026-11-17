@@ -82,7 +82,7 @@ Results in the model report describe this sample. They do not describe a test of
 
 The original PhiUSIIL table has 54 features. Many of them come from the webpage source, such as line counts, titles, iframes, and popup counts. URLGuard cannot see a page's source, because the safety rule is that a submitted URL is never opened, downloaded, or rendered.
 
-Training therefore ignores those columns. `download_data.py` does not even save them. Both training and the FastAPI prediction call `extract_features(url)` and use the 12 numbers listed in `features.py`. If training had used page-content features, the saved model could not score a URL typed into the website.
+Training therefore ignores those columns. `download_data.py` does not even save them. Both training and the FastAPI prediction call `features_from_normalized(normalized)` and use the 12 numbers listed in `features.py`. If training had used page-content features, the saved model could not score a URL typed into the website.
 
 ## What This File Is Not
 

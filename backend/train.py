@@ -18,22 +18,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import sklearn
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import (
-    accuracy_score,
-    classification_report,
-    confusion_matrix,
-    f1_score,
-    precision_score,
-    recall_score,
-)
+from sklearn.metrics import classification_report, confusion_matrix
 from sklearn.model_selection import train_test_split
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import StandardScaler
 
-from features import FEATURE_INFO, FEATURE_NAMES, extract_features, normalize_url
+from features import FEATURE_INFO, FEATURE_NAMES, feature_vector, normalize_url
+from modeling import NEAR_F1, NEAR_RECALL, RANDOM_STATE, score_predictions, select_best_model, train_candidates
 from write_docs import write_all_docs
 
 
@@ -44,82 +33,8 @@ MODEL_DIR = os.path.join(BASE_DIR, "models")
 RESULTS_DIR = os.path.join(BASE_DIR, "results")
 MODEL_PATH = os.path.join(MODEL_DIR, "best_model.joblib")
 
-RANDOM_STATE = 42
 SAMPLE_SIZE = 30000
-NEAR_F1 = 0.005
-NEAR_RECALL = 0.01
 OFFICIAL_LABEL_SENTENCE = "Label 1 corresponds to a legitimate URL, label 0 to a phishing URL"
-
-# Lower number means a simpler model. Used only when scores are nearly the same.
-SIMPLICITY = {
-    "Logistic Regression": 0,
-    "K-Nearest Neighbors": 1,
-    "Random Forest": 2,
-}
-
-
-def score_predictions(y_true, y_pred):
-    """Score phishing as the positive class (label 1)."""
-    return {
-        "accuracy": float(accuracy_score(y_true, y_pred)),
-        "precision": float(precision_score(y_true, y_pred, pos_label=1, zero_division=0)),
-        "recall": float(recall_score(y_true, y_pred, pos_label=1, zero_division=0)),
-        "f1": float(f1_score(y_true, y_pred, pos_label=1, zero_division=0)),
-    }
-
-
-def select_best_model(rows):
-    """Choose a model from validation scores only.
-
-    1. The main score is the phishing-class F1.
-    2. If F1 scores are within 0.005, use phishing recall as the tie-breaker.
-    3. If recall is also within 0.01, choose the simpler model.
-    """
-    best_f1 = max(row["f1"] for row in rows)
-    contenders = [row for row in rows if best_f1 - row["f1"] <= NEAR_F1]
-
-    if len(contenders) == 1:
-        chosen = contenders[0]
-        reason = (
-            chosen["model"]
-            + " had the highest validation F1-score for the phishing class ("
-            + format(chosen["f1"], ".4f")
-            + ")."
-        )
-        return chosen["model"], reason, chosen
-
-    best_recall = max(row["recall"] for row in contenders)
-    recall_contenders = [row for row in contenders if best_recall - row["recall"] <= NEAR_RECALL]
-    recall_contenders.sort(key=lambda row: SIMPLICITY[row["model"]])
-    chosen = recall_contenders[0]
-
-    ranked = sorted(contenders, key=lambda row: (-row["f1"], -row["recall"]))
-    score_list = ", ".join(row["model"] + " F1 " + format(row["f1"], ".4f") for row in ranked)
-    if len(recall_contenders) == 1:
-        reason = (
-            "The top validation F1-scores were close (within "
-            + str(NEAR_F1)
-            + "): "
-            + score_list
-            + ". "
-            + chosen["model"]
-            + " was selected because it had the higher phishing recall ("
-            + format(chosen["recall"], ".4f")
-            + ")."
-        )
-    else:
-        reason = (
-            "The top validation F1-scores were close (within "
-            + str(NEAR_F1)
-            + "): "
-            + score_list
-            + ". Phishing recall was also similar (within "
-            + str(NEAR_RECALL)
-            + "). "
-            + chosen["model"]
-            + " was selected because it is the simpler model."
-        )
-    return chosen["model"], reason, chosen
 
 
 def clean_dataset(df):
@@ -146,23 +61,15 @@ def clean_dataset(df):
     df["label"] = df["label"].astype(int)
     df["url"] = df["url"].astype(str)
 
-    valid_flags = []
     normalized_urls = []
-    urls = df["url"].tolist()
-    for index, url in enumerate(urls):
-        if index % 50000 == 0:
-            print("Checking URLs:", index, "/", len(urls))
+    for url in df["url"]:
         try:
             normalized_urls.append(normalize_url(url))
-            valid_flags.append(True)
         except ValueError:
-            valid_flags.append(False)
-    valid_flags = np.asarray(valid_flags, dtype=bool)
-    summary["removed_invalid"] = int((~valid_flags).sum())
-    df = df.iloc[np.flatnonzero(valid_flags)].reset_index(drop=True)
-    # Canonical form drops a leading www. Then www.example.com and example.com
-    # cannot sit in both the training split and the test split.
+            normalized_urls.append(None)
     df["url"] = normalized_urls
+    summary["removed_invalid"] = int(df["url"].isna().sum())
+    df = df.dropna(subset=["url"])
 
     label_variety = df.groupby("url")["label"].nunique()
     conflict_urls = label_variety[label_variety > 1].index
@@ -231,13 +138,7 @@ def stratified_sample(df, sample_size, random_state):
 
 
 def make_feature_matrix(urls):
-    rows = []
-    for index, url in enumerate(urls):
-        if index % 5000 == 0:
-            print("Extracting features:", index, "/", len(urls))
-        features = extract_features(url)
-        rows.append([features[name] for name in FEATURE_NAMES])
-    print("Extracting features:", len(urls), "/", len(urls))
+    rows = [feature_vector(url) for url in urls]
     matrix = np.asarray(rows, dtype=float)
     if np.isnan(matrix).any():
         raise SystemExit("Feature matrix contains missing values.")
@@ -494,68 +395,10 @@ def main():
     print("Validation rows:", len(y_val), "| SAFE", val_safe, "| PHISHING", val_phishing)
     print("Test rows:", len(y_test), "| SAFE", test_safe, "| PHISHING", test_phishing)
 
-    models = [
-        (
-            "Logistic Regression",
-            Pipeline(
-                [
-                    ("scaler", StandardScaler()),
-                    (
-                        "classifier",
-                        LogisticRegression(solver="lbfgs", max_iter=1000, random_state=RANDOM_STATE),
-                    ),
-                ]
-            ),
-        ),
-        (
-            "K-Nearest Neighbors",
-            Pipeline(
-                [
-                    ("scaler", StandardScaler()),
-                    ("classifier", KNeighborsClassifier(n_neighbors=5)),
-                ]
-            ),
-        ),
-        (
-            "Random Forest",
-            RandomForestClassifier(
-                n_estimators=100,
-                max_depth=20,
-                random_state=RANDOM_STATE,
-                n_jobs=-1,
-            ),
-        ),
-    ]
-
-    fitted = {}
-    validation_rows = []
-    validation_reports = []
-    for name, model in models:
-        print("Training", name + "...")
-        model.fit(X_train, y_train)
-        predictions = model.predict(X_val)
-        scores = score_predictions(y_val, predictions)
-        scores["model"] = name
-        validation_rows.append(scores)
-        fitted[name] = model
-        report = classification_report(
-            y_val,
-            predictions,
-            labels=[0, 1],
-            target_names=["SAFE", "PHISHING"],
-            digits=4,
-            zero_division=0,
-        )
-        validation_reports.append("VALIDATION — " + name + "\n" + report)
-        print(name, "validation F1:", format(scores["f1"], ".4f"))
-
-    print("Validation comparison (these numbers choose the model):")
+    chosen_model, chosen_name, reason, chosen_scores, validation_rows, validation_reports = train_candidates(
+        X_train, y_train, X_val, y_val
+    )
     print_table(validation_rows)
-
-    chosen_name, reason, chosen_scores = select_best_model(validation_rows)
-    chosen_model = fitted[chosen_name]
-    print("Selected model:", chosen_name)
-    print("Reason:", reason)
 
     # The test set is used once, after selection. It is not used to choose again.
     print("Evaluating the selected model once on the held-out test set...")
@@ -613,28 +456,10 @@ def main():
         raise SystemExit("Saved feature order does not match features.py.")
     print("Saved and reloaded model:", MODEL_PATH)
 
-    rounded_validation = []
-    for row in validation_rows:
-        rounded_validation.append(
-            {
-                "model": row["model"],
-                "accuracy": round(float(row["accuracy"]), 6),
-                "precision": round(float(row["precision"]), 6),
-                "recall": round(float(row["recall"]), 6),
-                "f1": round(float(row["f1"]), 6),
-            }
-        )
-    comparison_frame = pd.DataFrame(rounded_validation)
-    comparison_frame = comparison_frame[["model", "accuracy", "precision", "recall", "f1"]]
-    comparison_frame = comparison_frame.rename(
-        columns={
-            "model": "Model",
-            "accuracy": "Accuracy",
-            "precision": "Precision",
-            "recall": "Recall",
-            "f1": "F1",
-        }
-    )
+    metric_names = ["accuracy", "precision", "recall", "f1"]
+    comparison_frame = pd.DataFrame(validation_rows)[["model", *metric_names]].round(6)
+    rounded_validation = comparison_frame.to_dict("records")
+    comparison_frame.columns = ["Model", "Accuracy", "Precision", "Recall", "F1"]
     comparison_path = os.path.join(RESULTS_DIR, "model_comparison.csv")
     comparison_frame.to_csv(comparison_path, index=False)
 

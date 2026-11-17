@@ -1,5 +1,7 @@
 # URLGuard
 
+[Two-person viva practice](VIVA-PRACTICE.md) · [Code walkthrough](CODE-WALKTHROUGH.md)
+
 Machine learning based phishing URL detection. Machine Learning Lab mini project.
 
 Jaypee Institute of Information Technology, Noida
@@ -10,14 +12,14 @@ Use this file to explain the project in a viva. The numbers below come from the 
 
 ## One-minute explanation
 
-URLGuard checks a pasted link and estimates whether it looks legitimate or phishing. The browser does not run Python and it does not open the website. It sends the URL text to a local FastAPI service. FastAPI turns the text into 12 numbers with `extract_features`, then calls a saved scikit-learn model. The saved model is **Random Forest**. On the held-out test split its accuracy is 0.9964, precision 0.9984, recall 0.9932, and F1 0.9958. This is an educational estimate, not a security guarantee.
+URLGuard checks a pasted link and estimates whether it looks legitimate or phishing. The browser does not run Python and it does not open the website. It sends the URL text to a local FastAPI service. FastAPI turns the text into 12 numbers with `features_from_normalized`, then calls a saved scikit-learn model. The saved model is **Random Forest**. On the held-out test split its accuracy is 0.9964, precision 0.9984, recall 0.9932, and F1 0.9958. This is an educational estimate, not a security guarantee.
 
 ## How one check works
 
 1. The user types a URL on the Scanner page and presses Analyze URL.
 2. The Next.js page sends `POST /api/predict` with JSON `{ "url": "..." }` to FastAPI at http://127.0.0.1:5000.
 3. `normalize_url` accepts only HTTP and HTTPS. A missing scheme becomes `https://`. A leading `www.` is removed.
-4. `extract_features` returns the same 12 numbers, in the same order, that were used in training.
+4. `features_from_normalized` returns the same 12 numbers, in the same order, that were used in training.
 5. The saved model runs `predict` for the class and `predict_proba` for the phishing score. The phishing score is the column for class 1, read from `model.classes_`, not a guessed index.
 6. The page shows SAFE or PHISHING, the score, the model name, and the URL traits that were measured. The submitted URL is plain text, not a clickable link.
 
@@ -30,7 +32,7 @@ Next.js frontend  http://localhost:3000
         v
 FastAPI + Uvicorn  http://127.0.0.1:5000
         |
-        |  extract_features(url)
+        |  features_from_normalized(normalized)
         v
 Saved scikit-learn model  backend/models/best_model.joblib
 ```
@@ -38,7 +40,7 @@ Saved scikit-learn model  backend/models/best_model.joblib
 ## What each file does
 
 - `backend/download_data.py` downloads UCI dataset 967 with `fetch_ucirepo` and saves only `url` and the original label in `data/urls.csv`. It does not invent rows.
-- `backend/features.py` has `extract_features`. Training and the API both call this function. It never opens the URL.
+- `backend/features.py` has `features_from_normalized`. Training and the API both call this function. It never opens the URL.
 - `backend/train.py` cleans the table, builds X and y, splits the rows, trains three models, picks one on validation F1, tests that model once, and saves the Joblib file plus the reports.
 - `backend/app.py` is the FastAPI service. `load_artifacts` runs once at startup.
 - `backend/write_docs.py` writes this README and the other reports from `results/metrics.json`.

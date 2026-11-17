@@ -58,7 +58,7 @@ If the same URL is copied in both the training split and the test split, the tes
 
 ### 13. What is feature extraction?
 
-Feature extraction turns raw input into numbers a model can use. The raw input here is a URL string. `extract_features` returns 12 numbers, such as length, dot count, and whether the host is an IP address. The same function is used for training and for a live prediction.
+Feature extraction turns raw input into numbers a model can use. The raw input here is a URL string. `features_from_normalized` returns 12 numbers, such as length, dot count, and whether the host is an IP address. The same function is used for training and for a live prediction.
 
 ### 14. What are the input features?
 
@@ -158,7 +158,7 @@ Joblib saves a Python object to disk and loads it back. I save the fitted model,
 
 ### 38. How does FastAPI use the trained model?
 
-When `app.py` starts, `load_artifacts` reads the joblib file once. A request to `POST /api/predict` checks the URL, calls `extract_features`, builds the 12 numbers in the saved order, then calls `predict` and `predict_proba`. It does not call `fit` again. If I train a new model, I have to restart the API so it loads the new file.
+When `app.py` starts, `load_artifacts` reads the joblib file once. A request to `POST /api/predict` checks the URL, calls `features_from_normalized`, builds the 12 numbers in the saved order, then calls `predict` and `predict_proba`. It does not call `fit` again. If I train a new model, I have to restart the API so it loads the new file.
 
 ### 39. Why can a legitimate URL be incorrectly classified?
 
@@ -272,7 +272,7 @@ The keyword list is: login, verify, update, secure, account, confirm, password.
 1. `normalize_url` trims the text, rejects spaces and unknown schemes, and adds `https://` when the scheme is missing.
 2. `hostname_is_ip` uses `ipaddress` on the parsed hostname only, not on the whole string.
 3. `count_subdomains` counts hostname labels beyond the last two. IP hosts count as 0.
-4. `extract_features` parses the URL and fills the 12 counters.
+4. `features_from_normalized` parses the URL and fills the 12 counters.
 5. The returned dictionary is always built in the order of `FEATURE_NAMES`.
 6. Nothing in this file opens a network connection.
 
@@ -281,7 +281,7 @@ The keyword list is: login, verify, update, secure, account, confirm, password.
 1. `clean_dataset` removes missing, invalid, conflicting, and duplicate rows, and prints the counts.
 2. `convert_labels` applies `phishing_label = 1 - original_label` only if the source note and the published counts still match.
 3. `stratified_sample` keeps 30,000 real rows with the cleaned class mix.
-4. `make_feature_matrix` calls `extract_features` and builds X.
+4. `make_feature_matrix` calls `feature_vector` and builds X.
 5. `train_test_split` creates the 70/15/15 stratified split with seed 42.
 6. The script fits Logistic Regression, KNN, and Random Forest on `X_train` and `y_train`.
 7. `score_predictions` computes accuracy, precision, recall, and F1 with phishing as the positive class.

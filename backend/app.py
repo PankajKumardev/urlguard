@@ -16,7 +16,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
 
-from features import API_MAX_URL_LENGTH, FEATURE_NAMES, extract_features, normalize_url
+from features import API_MAX_URL_LENGTH, FEATURE_NAMES, features_from_normalized, normalize_url
 
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -177,7 +177,7 @@ async def predict(request: Request):
 
     try:
         normalized = normalize_url(url, max_length=API_MAX_URL_LENGTH)
-        features = extract_features(url, max_length=API_MAX_URL_LENGTH)
+        features = features_from_normalized(normalized)
     except ValueError as exc:
         return error(str(exc), 400)
 

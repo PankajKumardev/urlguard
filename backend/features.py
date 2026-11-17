@@ -1,6 +1,6 @@
 """Turn a URL string into a fixed list of simple numeric features.
 
-Training and live prediction both call extract_features(). The function
+Training and live prediction both use features_from_normalized(). The function
 reads the URL text only. It does not open, visit, or download the address.
 
 Scheme rule:
@@ -160,7 +160,7 @@ def normalize_url(url, max_length=None):
     scheme = parsed.scheme.lower()
     if scheme not in ("http", "https"):
         raise ValueError("Only HTTP and HTTPS URLs can be analyzed.")
-    if parsed.hostname is None or parsed.hostname == "":
+    if not parsed.hostname:
         raise ValueError("This URL does not have a valid hostname.")
     return strip_leading_www(text)
 
@@ -198,17 +198,20 @@ def count_subdomains(hostname, is_ip):
     The last two dot-separated labels are treated as the domain and its suffix.
     Labels before those two are counted as subdomains.
     """
-    if is_ip or hostname is None or hostname == "":
+    if is_ip or not hostname:
         return 0
     labels = [part for part in hostname.split(".") if part != ""]
-    if len(labels) <= 2:
-        return 0
-    return len(labels) - 2
+    return max(0, len(labels) - 2)
 
 
 def extract_features(url, max_length=None):
     """Return one feature dictionary. Keys always follow FEATURE_NAMES."""
     normalized = normalize_url(url, max_length=max_length)
+    return features_from_normalized(normalized)
+
+
+def features_from_normalized(normalized):
+    """Measure one URL after normalize_url has validated it."""
     parsed = urlparse(normalized)
     hostname = parsed.hostname or ""
     lowered = normalized.lower()
