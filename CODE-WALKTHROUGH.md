@@ -2,7 +2,7 @@
 
 [backend/features.py](#backendfeaturespy) · [backend/modeling.py](#backendmodelingpy) · [backend/train.py](#backendtrainpy) · [backend/app.py](#backendapppy) · [backend/download_data.py](#backenddownloaddatapy) · [backend/write_docs.py](#backendwritedocspy) · [Website and test files](#website-and-test-files)
 
-**Start with features.py, then modeling.py.** Pankaj predicts the vector for example.com/login. Shivam explains how three fitted models are compared and how the winner scores that vector.
+**Start with features.py, then modeling.py.** Pankaj traces a URL through feature extraction and the Logistic Regression and KNN pipelines. Shivam traces the Random Forest. Both compare validation F1 before the winner scores a new URL.
 
 The numbers beside the source are the line numbers in the repository. Read each short passage and trace the values in the numbered code below it.
 

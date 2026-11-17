@@ -7,7 +7,7 @@ These are responsibilities for preparation, demonstration and maintenance of the
 | Project | Pankaj | Shivam |
 | --- | --- | --- |
 | Scout | Trace input through the FIFO queue, find duplicate URLs in the linked list, explain pointers and free each node. Demonstrate the question form and its request. | Extract keywords, score a page by hand, trace stable bubble sort and explain the selection cutoff. Demonstrate the answer and source cards. |
-| URLGuard | Clean and label the data, derive the 12 features, explain the stratified split and trace the scanner form into the Python API. | Compare the three classifiers, explain scaling and model selection, interpret the confusion matrix and show the prediction result and Model Insights page. |
+| URLGuard | Prepare features and splits. Train Logistic Regression and KNN, explain scaling and demonstrate the scanner. | Train Random Forest, explain tree settings and the confusion matrix, and demonstrate the prediction and Model Insights pages. Both members compare validation results. |
 
 ## Scout · follow one source
 
@@ -29,7 +29,9 @@ These are responsibilities for preparation, demonstration and maintenance of the
 
 **Why three splits?** Train on 21,000 rows, compare candidates on 4,500 validation rows, then measure the chosen model on 4,500 held-out rows. Stratification keeps a similar class mix. Exact normalized URL overlap is checked, but related domains can still appear across splits.
 
-**Shivam, how do the models differ?** Logistic Regression learns feature weights and converts their weighted sum into a probability. KNN uses the labels of five nearby training examples. Random Forest combines predictions from 100 decision trees grown with random sampling and feature selection. The first two use a scaler fitted inside the training pipeline. This keeps a large-range feature such as URL length from dominating KNN distance. Tree splits compare one feature with a threshold and can use the original units.
+**Pankaj, how do your two models differ?** Logistic Regression learns weights for the 12 features and uses their weighted sum to estimate phishing probability. KNN uses the labels of the five nearest training examples. Both pipelines fit the scaler on training rows. For KNN, scaling keeps URL length from dominating the distance calculation.
+
+**Shivam, how does your forest classify a URL?** Each of the 100 trees follows feature thresholds to a leaf. The forest averages the trees’ class probabilities and predicts the class with the higher average. Maximum depth is 20. Tree splits work in the original feature units.
 
 **Why did Random Forest win?** Its validation phishing F1 was 0.992402. KNN scored 0.986877 and Logistic Regression 0.958456. The gap to KNN was 0.005525, above the 0.005 near-tie margin. Inside that margin the code considers phishing recall, then a fixed simplicity order for candidates within 0.01 of the best remaining recall.
 
