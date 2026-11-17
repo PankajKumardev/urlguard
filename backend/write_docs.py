@@ -874,7 +874,7 @@ def readme_doc(metrics):
     lines = []
     lines.append("# URLGuard")
     lines.append("")
-    lines.append("[Two-person viva practice](VIVA-PRACTICE.md) · [Code walkthrough](CODE-WALKTHROUGH.md)")
+    lines.append("[Team roles](ROLES.md) · [Two-person viva practice](VIVA-PRACTICE.md) · [Code walkthrough](CODE-WALKTHROUGH.md)")
     lines.append("")
     lines.append("Machine learning based phishing URL detection. Machine Learning Lab mini project.")
     lines.append("")
