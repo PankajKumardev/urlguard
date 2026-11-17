@@ -1,8 +1,10 @@
 # URLGuard — team roles
 
+We downloaded the PhiUSIIL dataset from the UCI Machine Learning Repository. Each row gives a URL and a label indicating whether it is legitimate or phishing.
+
 | Feature | Team member | Implementation |
 | --- | --- | --- |
-| Dataset preparation | Pankaj | Load the PhiUSIIL URL records, check the source labels, remove invalid and conflicting rows, and convert the labels so phishing is class 1. [download_data.py](backend/download_data.py) · [train.py](backend/train.py) |
+| Dataset preparation | Pankaj | Clean the saved URL records, remove invalid rows, duplicates and conflicting labels, and convert the labels so phishing is class 1. [train.py](backend/train.py) |
 | Feature extraction and data splitting | Pankaj | Normalize each URL, convert its text into 12 ordered numeric features, and prepare stratified training, validation, and test sets. [features.py](backend/features.py) · [train.py](backend/train.py) |
 | URL entry form | Pankaj | Accept a URL, submit it to the prediction API, and handle loading and input errors. [UrlScanner.tsx](frontend/components/UrlScanner.tsx) |
 | Model training and selection | Shivam | Train Logistic Regression, K-Nearest Neighbors, and Random Forest. Compare phishing F1 on validation data and apply the recall and simplicity rules for close scores. [modeling.py](backend/modeling.py) |
