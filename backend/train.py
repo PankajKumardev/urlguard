@@ -37,6 +37,7 @@ SAMPLE_SIZE = 30000
 OFFICIAL_LABEL_SENTENCE = "Label 1 corresponds to a legitimate URL, label 0 to a phishing URL"
 
 
+# Remove missing values, bad URLs, conflicting labels and duplicates
 def clean_dataset(df):
     """Drop missing, invalid, conflicting, and duplicate URL rows.
 
@@ -91,6 +92,7 @@ def clean_dataset(df):
     return df, summary
 
 
+# Change the source labels so phishing is 1 and safe is 0
 def convert_labels(df, source_info):
     """Flip the UCI codes into 0 = SAFE and 1 = PHISHING."""
     sentence = str(source_info.get("official_label_sentence", ""))
@@ -109,6 +111,7 @@ def convert_labels(df, source_info):
     return converted
 
 
+# Take a smaller sample while keeping roughly the same class mix
 def stratified_sample(df, sample_size, random_state):
     """Keep about sample_size real rows, with the same class mix as the cleaned data."""
     if len(df) <= sample_size:
@@ -137,6 +140,7 @@ def stratified_sample(df, sample_size, random_state):
     return sampled
 
 
+# Make one row of 12 numbers for each URL
 def make_feature_matrix(urls):
     rows = [feature_vector(url) for url in urls]
     matrix = np.asarray(rows, dtype=float)
@@ -145,6 +149,7 @@ def make_feature_matrix(urls):
     return matrix
 
 
+# Find the probability column for phishing class 1
 def phishing_probability_from_model(model, matrix):
     """Read the probability column that belongs to class 1."""
     probabilities = model.predict_proba(matrix)
@@ -154,6 +159,7 @@ def phishing_probability_from_model(model, matrix):
     return probabilities[:, classes.index(1)]
 
 
+# Hide most of a phishing URL before putting it in the report
 def mask_phishing_url(url):
     """Hide a phishing URL before it is written into the report."""
     from urllib.parse import urlparse
@@ -167,6 +173,7 @@ def mask_phishing_url(url):
     return parsed.scheme + "://" + masked_host + "/[redacted-path]"
 
 
+# Pick a test example to show with its real and predicted labels
 def choose_example(urls, y_true, y_pred, model, matrix):
     """Pick one real held-out row and hide the URL when it is phishing."""
     chosen = None
@@ -225,6 +232,7 @@ def choose_example(urls, y_true, y_pred, model, matrix):
     }
 
 
+# Save a picture showing correct predictions and the two kinds of errors
 def save_confusion_matrix(cm, model_name, path):
     fig, ax = plt.subplots(figsize=(6.4, 5.2))
     image = ax.imshow(cm, cmap="Blues")
@@ -253,6 +261,7 @@ def save_confusion_matrix(cm, model_name, path):
     plt.close(fig)
 
 
+# Save a chart of the three models’ validation scores
 def save_comparison_chart(rows, path):
     metric_keys = [
         ("accuracy", "Accuracy"),
@@ -281,11 +290,13 @@ def save_comparison_chart(rows, path):
     plt.close(fig)
 
 
+# Count safe and phishing rows
 def class_count(labels):
     values = np.asarray(labels)
     return int((values == 0).sum()), int((values == 1).sum())
 
 
+# Make a file fingerprint so we can identify the dataset used
 def sha256_file(path):
     digest = hashlib.sha256()
     with open(path, "rb") as handle:
@@ -294,6 +305,7 @@ def sha256_file(path):
     return digest.hexdigest()
 
 
+# Print the model comparison in columns
 def print_table(rows):
     print("")
     print(f"{'Model':<24} {'Accuracy':>10} {'Precision':>10} {'Recall':>10} {'F1':>10}")
@@ -308,6 +320,7 @@ def print_table(rows):
     print("")
 
 
+# Print how many rows were removed and kept
 def print_cleaning(summary):
     print("Original rows:", summary["original_rows"])
     print("Removed invalid rows:", summary["removed_invalid_rows"])
@@ -321,6 +334,7 @@ def print_cleaning(summary):
     print("Phishing URL count:", summary["phishing_count"])
 
 
+# Run the training steps and save the model and results
 def main():
     if not os.path.exists(DATA_PATH) or not os.path.exists(SOURCE_INFO_PATH):
         raise SystemExit("Dataset file not found. Run python download_data.py first.")

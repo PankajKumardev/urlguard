@@ -34,6 +34,7 @@ PUBLISHED_LEGITIMATE = 134850
 PUBLISHED_PHISHING = 100945
 
 
+# Find a source column even if its name uses different capital letters
 def column_lookup(frame, accepted_names):
     """Return a Series for the first matching column name, ignoring case."""
     if frame is None:
@@ -45,6 +46,7 @@ def column_lookup(frame, accepted_names):
     return None
 
 
+# Check the source text confirms what each label means
 def label_sentence_is_present(text):
     """True only when the text contains the official class-label sentence."""
     if not text:
@@ -54,6 +56,7 @@ def label_sentence_is_present(text):
     return expected in lowered
 
 
+# Show where to put a manually downloaded CSV
 def manual_download_instructions():
     print("")
     print("The official dataset could not be downloaded automatically.")
@@ -71,6 +74,7 @@ def manual_download_instructions():
     print("")
 
 
+# Fetch dataset 967 from UCI
 def download_with_ucimlrepo():
     """Fetch dataset 967. Return (features, targets, metadata, variables) or raise."""
     from ucimlrepo import fetch_ucirepo
@@ -79,6 +83,7 @@ def download_with_ucimlrepo():
     return dataset.data.features, dataset.data.targets, dataset.metadata, dataset.variables
 
 
+# Read the CSV supplied manually
 def read_manual_csv():
     """Read a CSV the user placed after a failed automatic download."""
     if not os.path.exists(MANUAL_CSV_PATH):
@@ -89,6 +94,7 @@ def read_manual_csv():
     return frame
 
 
+# Collect the source descriptions of the labels
 def collect_label_text(metadata, variables):
     """Join the metadata fields that describe the class labels."""
     parts = []
@@ -110,6 +116,7 @@ def collect_label_text(metadata, variables):
     return "\n".join(parts)
 
 
+# Keep the URL and its label together in one table
 def build_frame_from_parts(features, targets):
     url_series = column_lookup(features, ["URL", "url"])
     label_series = column_lookup(targets, ["label", "class", "target"])
@@ -129,6 +136,7 @@ def build_frame_from_parts(features, targets):
     return frame
 
 
+# Save the dataset and its source information
 def save_outputs(frame, source_info):
     os.makedirs(DATA_DIR, exist_ok=True)
     frame.to_csv(CSV_PATH, index=False)
@@ -138,6 +146,7 @@ def save_outputs(frame, source_info):
     print("Saved source notes to", SOURCE_INFO_PATH)
 
 
+# Count each label before changing the label codes
 def summarize_original_labels(frame):
     numeric = pd.to_numeric(frame["label"], errors="coerce")
     legitimate = int((numeric == 1).sum())
@@ -151,6 +160,7 @@ def summarize_original_labels(frame):
     return legitimate, phishing, other
 
 
+# Turn the source metadata into a regular dictionary
 def metadata_to_dict(metadata):
     if metadata is None:
         return {}
@@ -167,6 +177,7 @@ def metadata_to_dict(metadata):
     return clean
 
 
+# Download the dataset, check its labels and save the files
 def main():
     os.makedirs(DATA_DIR, exist_ok=True)
     features = None

@@ -130,6 +130,7 @@ FEATURE_INFO = [
 ]
 
 
+# Check the URL and add https if the scheme is missing
 def normalize_url(url, max_length=None):
     """Return a cleaned URL string, or raise ValueError if it cannot be used."""
     if url is None:
@@ -165,6 +166,7 @@ def normalize_url(url, max_length=None):
     return strip_leading_www(text)
 
 
+# Remove www so both versions of a host use the same features
 def strip_leading_www(url):
     """Drop a leading www. label. www.example.com and example.com become the same host."""
     parsed = urlparse(url)
@@ -180,6 +182,7 @@ def strip_leading_www(url):
     return urlunparse(parsed._replace(netloc=prefix + hostport[4:]))
 
 
+# Check whether the host is an IPv4 or IPv6 address
 def hostname_is_ip(hostname):
     """Return True when the hostname is an IP address, not merely text that contains digits."""
     if hostname is None:
@@ -192,6 +195,7 @@ def hostname_is_ip(hostname):
         return False
 
 
+# Count host labels before the last two parts
 def count_subdomains(hostname, is_ip):
     """Count extra hostname labels using a simple two-label approximation.
 
@@ -204,12 +208,14 @@ def count_subdomains(hostname, is_ip):
     return max(0, len(labels) - 2)
 
 
+# Clean the input URL, then measure its features
 def extract_features(url, max_length=None):
     """Return one feature dictionary. Keys always follow FEATURE_NAMES."""
     normalized = normalize_url(url, max_length=max_length)
     return features_from_normalized(normalized)
 
 
+# Turn the cleaned URL into 12 numbers
 def features_from_normalized(normalized):
     """Measure one URL after normalize_url has validated it."""
     parsed = urlparse(normalized)
@@ -238,6 +244,7 @@ def features_from_normalized(normalized):
     return {name: int(values[name]) for name in FEATURE_NAMES}
 
 
+# Put the numbers in the same order the model was trained with
 def feature_vector(url, max_length=None):
     """Return the feature values in the same order used during training."""
     features = extract_features(url, max_length=max_length)

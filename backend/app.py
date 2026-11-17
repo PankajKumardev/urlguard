@@ -45,6 +45,7 @@ metrics = None
 load_error = None
 
 
+# Load the saved model and report once when the API starts
 def load_artifacts():
     """Load the model and metrics one time."""
     global bundle, metrics, load_error
@@ -78,6 +79,7 @@ def load_artifacts():
     print("The model stays in memory. Restart the API if you train again.")
 
 
+# Predict one URL and read the probability for the requested class
 def class_probability(model, vector, class_value):
     """Return predict_proba for one class, using the model's own class order."""
     matrix = np.asarray([vector], dtype=float)
@@ -89,6 +91,7 @@ def class_probability(model, vector, class_value):
     return float(probabilities[classes.index(class_value)]), predicted
 
 
+# Describe the URL traits we measured for the result screen
 def build_reasons(features):
     """Describe URL traits that were measured. These do not prove why the model decided."""
     reasons = []
@@ -123,6 +126,7 @@ def build_reasons(features):
     return reasons
 
 
+# Make the short feature summary shown with a prediction
 def build_details(features):
     return [
         {"label": "URL length", "value": str(features["url_length"]) + " characters"},
@@ -133,21 +137,25 @@ def build_details(features):
     ]
 
 
+# Check whether we added https to the user’s input
 def scheme_was_added(original, normalized):
     text = original.strip().lower()
     return not text.startswith("http://") and not text.startswith("https://") and normalized.startswith("https://")
 
 
+# Check whether we removed www from the entered host
 def www_was_removed(original, normalized):
     original_host = (urlparse(original.strip()).hostname or "").lower()
     normalized_host = (urlparse(normalized).hostname or "").lower()
     return original_host.startswith("www.") and not normalized_host.startswith("www.")
 
 
+# Return an error message and an HTTP status code
 def error(message, status_code):
     return JSONResponse({"error": message}, status_code=status_code)
 
 
+# Reject a request if its declared size is too large
 @app.middleware("http")
 async def limit_request_size(request: Request, call_next):
     length = request.headers.get("content-length")
@@ -156,11 +164,13 @@ async def limit_request_size(request: Request, call_next):
     return await call_next(request)
 
 
+# Return a small response so we can check the API is running
 @app.get("/api/health")
 def health():
     return {"status": "ok"}
 
 
+# Read one URL, extract its features and ask the saved model for a prediction
 @app.post("/api/predict")
 async def predict(request: Request):
     try:
@@ -185,6 +195,7 @@ async def predict(request: Request):
         return error(load_error or "The trained model is not available.", 503)
 
     try:
+        # Match the feature order used during training
         vector = [features[name] for name in FEATURE_NAMES]
         phishing_probability, predicted = class_probability(bundle["model"], vector, 1)
     except Exception:
@@ -215,6 +226,7 @@ async def predict(request: Request):
     }
 
 
+# Send the saved evaluation results to the Model Insights page
 @app.get("/api/model-info")
 def model_info():
     if metrics is None:
@@ -225,6 +237,7 @@ def model_info():
     return payload
 
 
+# Read a saved chart and return its image bytes
 def png_response(path, missing_message):
     if not os.path.exists(path):
         return error(missing_message, 503)
@@ -233,16 +246,19 @@ def png_response(path, missing_message):
     return Response(content=payload, media_type="image/png")
 
 
+# Send the confusion matrix image to the browser
 @app.get("/api/confusion-matrix")
 def confusion_matrix_image():
     return png_response(CONFUSION_MATRIX_PATH, "The confusion matrix image was not found. Run python train.py.")
 
 
+# Send the model comparison image to the browser
 @app.get("/api/comparison-chart")
 def comparison_chart_image():
     return png_response(COMPARISON_CHART_PATH, "The comparison chart was not found. Run python train.py.")
 
 
+# List the available API routes
 @app.get("/")
 def index():
     return {

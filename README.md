@@ -1,6 +1,6 @@
 # URLGuard
 
-[Team roles](ROLES.md) · [Two-person viva practice](VIVA-PRACTICE.md) · [Code walkthrough](CODE-WALKTHROUGH.md)
+[Reading order](READING-ORDER.md) · [Team roles](ROLES.md) · [Two-person viva practice](VIVA-PRACTICE.md) · [Code walkthrough](CODE-WALKTHROUGH.md)
 
 Machine learning based phishing URL detection. Machine Learning Lab mini project.
 

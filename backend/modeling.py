@@ -20,6 +20,7 @@ SIMPLICITY = {
 }
 
 
+# Compare predicted labels with the real labels
 def score_predictions(y_true, y_pred):
     """Score phishing as the positive class (label 1)."""
     return {
@@ -30,6 +31,7 @@ def score_predictions(y_true, y_pred):
     }
 
 
+# Choose using validation F1, then recall and simplicity for close scores
 def select_best_model(rows):
     """Choose a model from validation scores only.
 
@@ -53,15 +55,19 @@ def select_best_model(rows):
     return winner["model"], reason, winner
 
 
+# Set up the three models before training
 def candidate_models():
+    # Pankaj: scale the features, then fit Logistic Regression
     logistic = Pipeline([
         ("scaler", StandardScaler()),
         ("classifier", LogisticRegression(max_iter=1000, random_state=RANDOM_STATE)),
     ])
+    # Pankaj: scale the features, then use five nearest neighbours
     neighbors = Pipeline([
         ("scaler", StandardScaler()),
         ("classifier", KNeighborsClassifier(n_neighbors=5)),
     ])
+    # Shivam: combine 100 decision trees
     forest = RandomForestClassifier(
         n_estimators=100, max_depth=20, random_state=RANDOM_STATE, n_jobs=-1
     )
@@ -72,13 +78,16 @@ def candidate_models():
     ]
 
 
+# Fit each model on training rows and compare validation predictions
 def train_candidates(X_train, y_train, X_val, y_val):
     fitted = {}
     validation_rows = []
     validation_reports = []
     for name, model in candidate_models():
         print("Training", name + "...")
+        # Learn from training rows only
         model.fit(X_train, y_train)
+        # Check this fitted model on separate validation rows
         predictions = model.predict(X_val)
         scores = score_predictions(y_val, predictions)
         scores["model"] = name

@@ -12,23 +12,28 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DEMO_URL = "https://example.com/login?user=1"
 
 
+# Save one Markdown document
 def write(path, text):
     with open(path, "w", encoding="utf-8") as handle:
         handle.write(text.strip() + "\n")
 
 
+# Show a score with four decimal places
 def four(value):
     return f"{float(value):.4f}"
 
 
+# Show a fraction as a percentage
 def percent(value):
     return f"{float(value) * 100:.2f}%"
 
 
+# Add separators to large numbers
 def comma(value):
     return f"{int(value):,}"
 
 
+# Describe which model leads on one score
 def leader_sentence(rows, key, label):
     best = max(float(row[key]) for row in rows)
     names = [row["model"] for row in rows if abs(float(row[key]) - best) < 1e-9]
@@ -46,6 +51,7 @@ def leader_sentence(rows, key, label):
     )
 
 
+# Build the Markdown table of validation scores
 def comparison_table(rows):
     lines = [
         "| Model | Accuracy | Precision | Recall | F1 |",
@@ -68,6 +74,7 @@ def comparison_table(rows):
     return "\n".join(lines)
 
 
+# List the settings used for a model
 def hyperparameter_lines(settings):
     lines = []
     for name, value in settings.items():
@@ -75,10 +82,12 @@ def hyperparameter_lines(settings):
     return "\n".join(lines)
 
 
+# Keep text from breaking a Markdown table cell
 def safe_cell(text):
     return str(text).replace("|", "/").replace("\n", " ")
 
 
+# Build the report from the saved model results
 def model_report(metrics):
     cleaning = metrics["cleaning"]
     counts = metrics["counts"]
@@ -423,6 +432,7 @@ def model_report(metrics):
     return "\n".join(lines)
 
 
+# Build the dataset description from its source and cleaning results
 def dataset_doc(metrics):
     cleaning = metrics["cleaning"]
     counts = metrics["counts"]
@@ -520,6 +530,7 @@ def dataset_doc(metrics):
     return "\n".join(lines)
 
 
+# Build viva questions using the measured results
 def viva_doc(metrics):
     cleaning = metrics["cleaning"]
     counts = metrics["counts"]
@@ -854,6 +865,7 @@ def viva_doc(metrics):
     return "\n".join(lines)
 
 
+# Build the setup instructions and project overview
 def readme_doc(metrics):
     cleaning = metrics["cleaning"]
     counts = metrics["counts"]
@@ -874,7 +886,7 @@ def readme_doc(metrics):
     lines = []
     lines.append("# URLGuard")
     lines.append("")
-    lines.append("[Team roles](ROLES.md) · [Two-person viva practice](VIVA-PRACTICE.md) · [Code walkthrough](CODE-WALKTHROUGH.md)")
+    lines.append("[Reading order](READING-ORDER.md) · [Team roles](ROLES.md) · [Two-person viva practice](VIVA-PRACTICE.md) · [Code walkthrough](CODE-WALKTHROUGH.md)")
     lines.append("")
     lines.append("Machine learning based phishing URL detection. Machine Learning Lab mini project.")
     lines.append("")
@@ -1084,6 +1096,7 @@ def readme_doc(metrics):
     return "\n".join(lines)
 
 
+# Write the README, dataset notes, model report and viva notes
 def write_all_docs(metrics):
     write(os.path.join(ROOT, "MODEL_REPORT.md"), model_report(metrics))
     write(os.path.join(ROOT, "DATASET.md"), dataset_doc(metrics))
