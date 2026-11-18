@@ -1,9 +1,3 @@
-"""Train three classic models and keep the one with the best validation F1.
-
-Run this after download_data.py. It does not start the website.
-The test set is scored once, after the model has already been chosen.
-"""
-
 import hashlib
 import json
 import os
@@ -23,7 +17,6 @@ from sklearn.model_selection import train_test_split
 
 from features import FEATURE_INFO, FEATURE_NAMES, feature_vector, normalize_url
 from modeling import NEAR_F1, NEAR_RECALL, RANDOM_STATE, score_predictions, select_best_model, train_candidates
-from write_docs import write_all_docs
 
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -35,6 +28,36 @@ MODEL_PATH = os.path.join(MODEL_DIR, "best_model.joblib")
 
 SAMPLE_SIZE = 30000
 OFFICIAL_LABEL_SENTENCE = "Label 1 corresponds to a legitimate URL, label 0 to a phishing URL"
+
+
+def main():
+    # Load labeled URLs and turn each URL into a row of numbers.
+    dataset, summary, source_info = prepare_dataset()
+    urls = dataset["url"].tolist()
+    X = make_feature_matrix(urls)
+    y = dataset["label"].to_numpy(dtype=int)
+
+    # Train on 70%, compare models on 15%, and test only the winner on 15%.
+    training, validation, test = split_dataset(X, y, urls)
+
+    model, name, reason, scores, rows, reports = train_candidates(
+        training["X"], training["y"], validation["X"], validation["y"]
+    )
+
+    predictions = model.predict(test["X"])
+    test_scores = score_predictions(test["y"], predictions)
+    matrix = confusion_matrix(test["y"], predictions, labels=[0, 1])
+    print("Test scores:", test_scores)
+    print("Confusion matrix:")
+    print(matrix)
+
+    uses_scaler = save_model(model, name, test["X"], predictions)
+    save_training_results(
+        model, name, reason, uses_scaler, source_info, summary,
+        training, validation, test,
+        scores, rows, reports, predictions, test_scores, matrix,
+    )
+    print("Training finished. Start the website with: python app.py")
 
 
 # Remove missing values, bad URLs, conflicting labels and duplicates
@@ -149,16 +172,6 @@ def make_feature_matrix(urls):
     return matrix
 
 
-# Find the probability column for phishing class 1
-def phishing_probability_from_model(model, matrix):
-    """Read the probability column that belongs to class 1."""
-    probabilities = model.predict_proba(matrix)
-    classes = [int(label) for label in model.classes_]
-    if 1 not in classes:
-        raise SystemExit("The trained model does not contain the phishing class.")
-    return probabilities[:, classes.index(1)]
-
-
 # Hide most of a phishing URL before putting it in the report
 def mask_phishing_url(url):
     """Hide a phishing URL before it is written into the report."""
@@ -189,9 +202,9 @@ def choose_example(urls, y_true, y_pred, model, matrix):
 
     true_label = int(y_true[chosen])
     predicted_label = int(y_pred[chosen])
-    probability = float(phishing_probability_from_model(model, matrix[chosen : chosen + 1])[0])
     full_probabilities = model.predict_proba(matrix[chosen : chosen + 1])[0]
     classes = [int(label) for label in model.classes_]
+    probability = float(full_probabilities[classes.index(1)])
     safe_probability = float(full_probabilities[classes.index(0)])
     if predicted_label == 1 and probability < safe_probability:
         raise SystemExit("Phishing probability does not match the predicted class.")
@@ -305,39 +318,9 @@ def sha256_file(path):
     return digest.hexdigest()
 
 
-# Print the model comparison in columns
-def print_table(rows):
-    print("")
-    print(f"{'Model':<24} {'Accuracy':>10} {'Precision':>10} {'Recall':>10} {'F1':>10}")
-    for row in rows:
-        print(
-            f"{row['model']:<24} "
-            f"{row['accuracy']:>10.4f} "
-            f"{row['precision']:>10.4f} "
-            f"{row['recall']:>10.4f} "
-            f"{row['f1']:>10.4f}"
-        )
-    print("")
-
-
-# Print how many rows were removed and kept
-def print_cleaning(summary):
-    print("Original rows:", summary["original_rows"])
-    print("Removed invalid rows:", summary["removed_invalid_rows"])
-    print("  missing URL or label:", summary["removed_missing"])
-    print("  bad label values:", summary["removed_bad_label"])
-    print("  malformed URLs:", summary["removed_invalid"])
-    print("Duplicate count:", summary["duplicate_count"])
-    print("Removed conflicting-label rows:", summary["removed_conflicts"])
-    print("Final rows:", summary["final_rows"])
-    print("Legitimate URL count:", summary["safe_count"])
-    print("Phishing URL count:", summary["phishing_count"])
-
-
-# Run the training steps and save the model and results
-def main():
+def prepare_dataset():
     if not os.path.exists(DATA_PATH) or not os.path.exists(SOURCE_INFO_PATH):
-        raise SystemExit("Dataset file not found. Run python download_data.py first.")
+        raise SystemExit("Training requires data/urls.csv and data/source_info.json.")
 
     with open(SOURCE_INFO_PATH, encoding="utf-8") as handle:
         source_info = json.load(handle)
@@ -349,109 +332,38 @@ def main():
     summary["final_rows"] = int(len(cleaned))
     summary["safe_count"] = int((cleaned["label"] == 0).sum())
     summary["phishing_count"] = int((cleaned["label"] == 1).sum())
-    print_cleaning(summary)
-    print("Label conversion: phishing_label = 1 - original_label")
-    print("Project labels: 0 = SAFE, 1 = PHISHING")
-
     sampled = stratified_sample(cleaned, SAMPLE_SIZE, RANDOM_STATE)
-    print("Records selected for modeling:", len(sampled))
-    print("This is a real stratified subset, not the full dataset, and not synthetic data.")
+    print("Training experiment:", len(sampled), "labeled URLs")
+    return sampled, summary, source_info
 
-    urls = sampled["url"].tolist()
-    # X holds the feature values. y holds the project labels: 0 = SAFE, 1 = PHISHING.
-    y = sampled["label"].to_numpy(dtype=int)
-    X = make_feature_matrix(urls)
 
-    (
-        X_train,
-        X_temp,
-        y_train,
-        y_temp,
-        url_train,
-        url_temp,
-    ) = train_test_split(
-        X,
-        y,
-        urls,
-        test_size=0.30,
-        random_state=RANDOM_STATE,
-        stratify=y,
+def split_dataset(X, y, urls):
+    X_train, X_rest, y_train, y_rest, urls_train, urls_rest = train_test_split(
+        X, y, urls, test_size=0.30, random_state=RANDOM_STATE, stratify=y,
     )
-    (
-        X_val,
-        X_test,
-        y_val,
-        y_test,
-        url_val,
-        url_test,
-    ) = train_test_split(
-        X_temp,
-        y_temp,
-        url_temp,
-        test_size=0.50,
-        random_state=RANDOM_STATE,
-        stratify=y_temp,
+    X_val, X_test, y_val, y_test, urls_val, urls_test = train_test_split(
+        X_rest, y_rest, urls_rest, test_size=0.50, random_state=RANDOM_STATE, stratify=y_rest,
     )
 
-    overlap = len(set(url_train) & set(url_val))
-    overlap += len(set(url_train) & set(url_test))
-    overlap += len(set(url_val) & set(url_test))
+    overlap = len(set(urls_train) & set(urls_val))
+    overlap += len(set(urls_train) & set(urls_test))
+    overlap += len(set(urls_val) & set(urls_test))
     if overlap != 0:
         raise SystemExit("The same URL appeared in more than one split. Stopping.")
-    if len(url_train) + len(url_val) + len(url_test) != len(sampled):
+    if len(urls_train) + len(urls_val) + len(urls_test) != len(urls):
         raise SystemExit("Split sizes do not add up to the modeling sample.")
 
-    train_safe, train_phishing = class_count(y_train)
-    val_safe, val_phishing = class_count(y_val)
-    test_safe, test_phishing = class_count(y_test)
-    sample_safe, sample_phishing = class_count(y)
-    print("Training rows:", len(y_train), "| SAFE", train_safe, "| PHISHING", train_phishing)
-    print("Validation rows:", len(y_val), "| SAFE", val_safe, "| PHISHING", val_phishing)
-    print("Test rows:", len(y_test), "| SAFE", test_safe, "| PHISHING", test_phishing)
+    training = {"X": X_train, "y": y_train, "urls": urls_train}
+    validation = {"X": X_val, "y": y_val, "urls": urls_val}
+    test = {"X": X_test, "y": y_test, "urls": urls_test}
+    return training, validation, test
 
-    chosen_model, chosen_name, reason, chosen_scores, validation_rows, validation_reports = train_candidates(
-        X_train, y_train, X_val, y_val
-    )
-    print_table(validation_rows)
 
-    # The test set is used once, after selection. It is not used to choose again.
-    print("Evaluating the selected model once on the held-out test set...")
-    test_predictions = chosen_model.predict(X_test)
-    test_scores = score_predictions(y_test, test_predictions)
-    cm = confusion_matrix(y_test, test_predictions, labels=[0, 1])
-    true_negative = int(cm[0, 0])
-    false_positive = int(cm[0, 1])
-    false_negative = int(cm[1, 0])
-    true_positive = int(cm[1, 1])
-    test_report = classification_report(
-        y_test,
-        test_predictions,
-        labels=[0, 1],
-        target_names=["SAFE", "PHISHING"],
-        digits=4,
-        zero_division=0,
-    )
-    print("Test accuracy:", format(test_scores["accuracy"], ".4f"))
-    print("Test precision:", format(test_scores["precision"], ".4f"))
-    print("Test recall:", format(test_scores["recall"], ".4f"))
-    print("Test F1:", format(test_scores["f1"], ".4f"))
-    print("Confusion matrix [[TN, FP], [FN, TP]]:")
-    print(cm)
 
-    example = choose_example(url_test, y_test, test_predictions, chosen_model, X_test)
-    print("Held-out example URL:", example["url_display"])
-    print(
-        "True:",
-        example["true_label"],
-        "| Predicted:",
-        example["predicted_label"],
-        "| Phishing probability:",
-        example["phishing_probability"],
-    )
-
+def save_model(chosen_model, chosen_name, X_test, test_predictions):
     os.makedirs(MODEL_DIR, exist_ok=True)
     os.makedirs(RESULTS_DIR, exist_ok=True)
-    uses_scaler = hasattr(chosen_model, "named_steps") and "scaler" in getattr(chosen_model, "named_steps", {})
+    uses_scaler = "scaler" in getattr(chosen_model, "named_steps", {})
     bundle = {
         "model": chosen_model,
         "model_name": chosen_name,
@@ -470,6 +382,36 @@ def main():
         raise SystemExit("Saved feature order does not match features.py.")
     print("Saved and reloaded model:", MODEL_PATH)
 
+    return uses_scaler
+
+
+
+def save_training_results(
+    model, chosen_name, reason, uses_scaler, source_info, summary,
+    training, validation, test,
+    chosen_scores, validation_rows, validation_reports,
+    predictions, test_scores, cm,
+):
+    test_report = classification_report(
+        test["y"], predictions, labels=[0, 1], target_names=["SAFE", "PHISHING"],
+        digits=4, zero_division=0,
+    )
+    example = choose_example(test["urls"], test["y"], predictions, model, test["X"])
+
+    splits = {"train": training, "validation": validation, "test": test}
+    counts = {"overlap_count": 0}
+    for name, split in splits.items():
+        counts[name + "_rows"] = len(split["y"])
+        safe, phishing = class_count(split["y"])
+        counts[name + "_safe"] = safe
+        counts[name + "_phishing"] = phishing
+
+    for key in ("rows", "safe", "phishing"):
+        counts["modeling_" + key] = (
+            counts["train_" + key] + counts["validation_" + key] + counts["test_" + key]
+        )
+
+    true_negative, false_positive, false_negative, true_positive = cm.ravel().tolist()
     metric_names = ["accuracy", "precision", "recall", "f1"]
     comparison_frame = pd.DataFrame(validation_rows)[["model", *metric_names]].round(6)
     rounded_validation = comparison_frame.to_dict("records")
@@ -483,12 +425,8 @@ def main():
     save_comparison_chart(rounded_validation, chart_path)
 
     hash_rows = []
-    for split_name, split_urls in (
-        ("train", url_train),
-        ("validation", url_val),
-        ("test", url_test),
-    ):
-        for url in split_urls:
+    for split_name, split in splits.items():
+        for url in split["urls"]:
             digest = hashlib.sha256(url.encode("utf-8")).hexdigest()
             hash_rows.append({"split": split_name, "url_sha256": digest})
     hash_frame = pd.DataFrame(hash_rows)
@@ -505,10 +443,10 @@ def main():
     report_text.append("Final rows: " + str(summary["final_rows"]))
     report_text.append("Legitimate URL count: " + str(summary["safe_count"]))
     report_text.append("Phishing URL count: " + str(summary["phishing_count"]))
-    report_text.append("Modeling rows: " + str(len(sampled)))
-    report_text.append("Training rows: " + str(len(y_train)))
-    report_text.append("Validation rows: " + str(len(y_val)))
-    report_text.append("Test rows: " + str(len(y_test)))
+    report_text.append("Modeling rows: " + str(counts["modeling_rows"]))
+    report_text.append("Training rows: " + str(counts["train_rows"]))
+    report_text.append("Validation rows: " + str(counts["validation_rows"]))
+    report_text.append("Test rows: " + str(counts["test_rows"]))
     with open(os.path.join(RESULTS_DIR, "cleaning_summary.txt"), "w", encoding="utf-8") as handle:
         handle.write("\n".join(report_text) + "\n")
 
@@ -585,33 +523,19 @@ def main():
             "conversion": "phishing_label = 1 - original_label",
         },
         "cleaning": summary,
-        "counts": {
-            "modeling_rows": int(len(sampled)),
-            "modeling_safe": sample_safe,
-            "modeling_phishing": sample_phishing,
-            "train_rows": int(len(y_train)),
-            "validation_rows": int(len(y_val)),
-            "test_rows": int(len(y_test)),
-            "train_safe": train_safe,
-            "train_phishing": train_phishing,
-            "validation_safe": val_safe,
-            "validation_phishing": val_phishing,
-            "test_safe": test_safe,
-            "test_phishing": test_phishing,
-            "overlap_count": int(overlap),
-        },
+        "counts": counts,
         "validation_comparison": rounded_validation,
         "selected_validation": {
-            "accuracy": round(float(chosen_scores["accuracy"]), 6),
-            "precision": round(float(chosen_scores["precision"]), 6),
-            "recall": round(float(chosen_scores["recall"]), 6),
-            "f1": round(float(chosen_scores["f1"]), 6),
+            "accuracy": round(chosen_scores["accuracy"], 6),
+            "precision": round(chosen_scores["precision"], 6),
+            "recall": round(chosen_scores["recall"], 6),
+            "f1": round(chosen_scores["f1"], 6),
         },
         "test_metrics": {
-            "accuracy": round(float(test_scores["accuracy"]), 6),
-            "precision": round(float(test_scores["precision"]), 6),
-            "recall": round(float(test_scores["recall"]), 6),
-            "f1": round(float(test_scores["f1"]), 6),
+            "accuracy": round(test_scores["accuracy"], 6),
+            "precision": round(test_scores["precision"], 6),
+            "recall": round(test_scores["recall"], 6),
+            "f1": round(test_scores["f1"], 6),
             "confusion_matrix": [
                 [true_negative, false_positive],
                 [false_negative, true_positive],
@@ -634,11 +558,6 @@ def main():
     with open(metrics_path, "w", encoding="utf-8") as handle:
         json.dump(metrics, handle, indent=2)
     print("Saved", metrics_path)
-
-    write_all_docs(metrics)
-    print("Wrote MODEL_REPORT.md, DATASET.md, VIVA.md, and README.md")
-    print("Training finished. Start the website with: python app.py")
-
 
 if __name__ == "__main__":
     main()

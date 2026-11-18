@@ -1,9 +1,3 @@
-"""Small FastAPI service that scores one URL with the saved model.
-
-The model is loaded once, when this file starts. A prediction does not train it again.
-Feature extraction reads the URL text only and does not visit the address.
-"""
-
 import json
 import os
 import traceback
@@ -32,7 +26,6 @@ DISCLAIMER = (
 )
 
 app = FastAPI(title="URLGuard API")
-# Local lab pages may use port 3000, or another port if 3000 is already taken.
 app.add_middleware(
     CORSMiddleware,
     allow_origin_regex=r"http://(localhost|127\.0\.0\.1):\d+",
@@ -53,22 +46,24 @@ def load_artifacts():
     metrics = None
     load_error = None
 
-    if not os.path.exists(MODEL_PATH):
+    try:
+        loaded = joblib.load(MODEL_PATH)
+    except FileNotFoundError:
         load_error = "The trained model file was not found. Run python train.py before starting predictions."
-        print(load_error)
+    except Exception as exc:
+        load_error = "The model file could not be loaded. Run python train.py again."
+        print(exc)
     else:
-        try:
-            loaded = joblib.load(MODEL_PATH)
-            if loaded.get("feature_names") != list(FEATURE_NAMES):
-                load_error = "The saved model uses a different feature list. Run python train.py again."
-                print(load_error)
-            else:
-                bundle = loaded
-                print("Loaded model:", bundle.get("model_name"))
-        except Exception as error:
+        if not isinstance(loaded, dict):
             load_error = "The model file could not be loaded. Run python train.py again."
-            print(load_error)
-            print(error)
+        elif loaded.get("feature_names") != FEATURE_NAMES:
+            load_error = "The saved model uses a different feature list. Run python train.py again."
+        else:
+            bundle = loaded
+            print("Loaded model:", bundle.get("model_name"))
+
+    if load_error:
+        print(load_error)
 
     if os.path.exists(METRICS_PATH):
         with open(METRICS_PATH, encoding="utf-8") as handle:
@@ -140,7 +135,7 @@ def build_details(features):
 # Check whether we added https to the user’s input
 def scheme_was_added(original, normalized):
     text = original.strip().lower()
-    return not text.startswith("http://") and not text.startswith("https://") and normalized.startswith("https://")
+    return not text.startswith(("http://", "https://")) and normalized.startswith("https://")
 
 
 # Check whether we removed www from the entered host

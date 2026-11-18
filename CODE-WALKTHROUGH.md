@@ -1,6 +1,8 @@
 # URLGuard code walkthrough
 
-[backend/features.py](#backendfeaturespy) · [backend/modeling.py](#backendmodelingpy) · [backend/train.py](#backendtrainpy) · [backend/app.py](#backendapppy) · [backend/download_data.py](#backenddownloaddatapy) · [backend/write_docs.py](#backendwritedocspy) · [Website and test files](#website-and-test-files)
+The numbered excerpts show an earlier snapshot. Use the [reading order](READING-ORDER.md) to follow the current source files.
+
+[backend/features.py](#backendfeaturespy) · [backend/modeling.py](#backendmodelingpy) · [backend/train.py](#backendtrainpy) · [backend/app.py](#backendapppy) · [Website and test files](#website-and-test-files)
 
 **Start with features.py, then modeling.py.** Pankaj traces a URL through feature extraction and the Logistic Regression and KNN pipelines. Shivam traces the Random Forest. Both compare validation F1 before the winner scores a new URL.
 
@@ -516,7 +518,7 @@ Import numeric, file, plotting and ML tools. Paths are relative to this module s
 
 ```text
    1  """Train three classic models and keep the one with the best validation F1.
-   3  Run this after download_data.py. It does not start the website.
+   3  Run this with the bundled dataset.
    4  The test set is scored once, after the model has already been chosen.
    5  """
    7  import hashlib
@@ -535,7 +537,6 @@ Import numeric, file, plotting and ML tools. Paths are relative to this module s
   22  from sklearn.model_selection import train_test_split
   24  from features import FEATURE_INFO, FEATURE_NAMES, feature_vector, normalize_url
   25  from modeling import NEAR_F1, NEAR_RECALL, RANDOM_STATE, score_predictions, select_best_model, train_candidates
-  26  from write_docs import write_all_docs
   29  BASE_DIR = os.path.dirname(os.path.abspath(__file__))
   30  DATA_PATH = os.path.join(BASE_DIR, "data", "urls.csv")
   31  SOURCE_INFO_PATH = os.path.join(BASE_DIR, "data", "source_info.json")
@@ -880,7 +881,7 @@ Check the dataset and its metadata exist. Load both, clean rows, convert labels,
 ```text
  324  def main():
  325      if not os.path.exists(DATA_PATH) or not os.path.exists(SOURCE_INFO_PATH):
- 326          raise SystemExit("Dataset file not found. Run python download_data.py first.")
+ 326          raise SystemExit("Training requires data/urls.csv and data/source_info.json.")
  328      with open(SOURCE_INFO_PATH, encoding="utf-8") as handle:
  329          source_info = json.load(handle)
  331      print("Loading", DATA_PATH)
@@ -1248,8 +1249,6 @@ Write the JSON used by Model Insights. Refresh the Markdown reports and print co
  620      with open(metrics_path, "w", encoding="utf-8") as handle:
  621          json.dump(metrics, handle, indent=2)
  622      print("Saved", metrics_path)
- 624      write_all_docs(metrics)
- 625      print("Wrote MODEL_REPORT.md, DATASET.md, VIVA.md, and README.md")
  626      print("Training finished. Start the website with: python app.py")
  629  if __name__ == "__main__":
  630      main()
@@ -1555,44 +1554,6 @@ List the API routes at the root. Load artifacts on import. When run directly, re
  262      print("URLGuard API: http://127.0.0.1:" + str(port))
  263      uvicorn.run(app, host="127.0.0.1", port=port)
 ```
-
-## [backend/download_data.py](backend/download_data.py)
-
-Dataset preparation. These functions obtain the public training file and record how its labels were confirmed.
-
-| Source lines | Function | What the lines do |
-| --- | --- | --- |
-| 37–45 | `column_lookup` | Find a matching source column despite spelling or case differences. |
-| 48–54 | `label_sentence_is_present` | Check the source description for the expected class mapping. |
-| 57–71 | `manual_download_instructions` | Describe how to supply the CSV manually. |
-| 74–79 | `download_with_ucimlrepo` | Fetch UCI dataset 967 and return its parts. |
-| 82–89 | `read_manual_csv` | Read the manually supplied CSV. |
-| 92–110 | `collect_label_text` | Gather label descriptions from the available source metadata. |
-| 113–129 | `build_frame_from_parts` | Pair URL and label columns into one frame. |
-| 132–138 | `save_outputs` | Write the two-column CSV and provenance JSON. |
-| 141–151 | `summarize_original_labels` | Count the two original target labels. |
-| 154–167 | `metadata_to_dict` | Convert metadata to a regular dictionary for lookup. |
-| 170–289 | `main` | Choose a data source, verify counts and labels, record provenance, and write files. |
-
-## [backend/write_docs.py](backend/write_docs.py)
-
-Reporting after training. This file converts a results dictionary into readable Markdown.
-
-| Source lines | Function | What the lines do |
-| --- | --- | --- |
-| 15–17 | `write` | Write one document with a final newline. |
-| 20–21 | `four` | Format a metric to four decimal places. |
-| 24–25 | `percent` | Show a proportion as a percentage. |
-| 28–29 | `comma` | Format row counts with digit grouping. |
-| 32–46 | `leader_sentence` | Find and describe the leading score for one metric. |
-| 49–68 | `comparison_table` | Turn validation rows into a Markdown comparison table. |
-| 71–75 | `hyperparameter_lines` | Format model settings for the report. |
-| 78–79 | `safe_cell` | Escape table-cell content. |
-| 82–423 | `model_report` | Build the model report from dataset, parameters, validation and test evidence. |
-| 426–520 | `dataset_doc` | Describe the source, class mapping and cleaning decisions. |
-| 523–854 | `viva_doc` | Build viva questions and answers with measured values. |
-| 857–1084 | `readme_doc` | Build setup instructions, feature definitions and a results summary. |
-| 1087–1091 | `write_all_docs` | Write the four named Markdown documents to the repository root. |
 
 ## Website and test files
 

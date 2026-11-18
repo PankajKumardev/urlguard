@@ -39,11 +39,9 @@ Saved scikit-learn model  backend/models/best_model.joblib
 
 ## What each file does
 
-- `backend/download_data.py` downloads UCI dataset 967 with `fetch_ucirepo` and saves only `url` and the original label in `data/urls.csv`. It does not invent rows.
 - `backend/features.py` has `features_from_normalized`. Training and the API both call this function. It never opens the URL.
 - `backend/train.py` cleans the table, builds X and y, splits the rows, trains three models, picks one on validation F1, tests that model once, and saves the Joblib file plus the reports.
 - `backend/app.py` is the FastAPI service. `load_artifacts` runs once at startup.
-- `backend/write_docs.py` writes this README and the other reports from `results/metrics.json`.
 - `frontend/` is the Next.js site. Scanner is the check. Model Insights shows the real validation table, test scores, and confusion matrix.
 
 ## Technology
@@ -51,7 +49,6 @@ Saved scikit-learn model  backend/models/best_model.joblib
 - Frontend: Next.js App Router, React, TypeScript, Tailwind CSS, shadcn/ui, Lucide icons
 - Backend: Python 3.11.15, FastAPI, Uvicorn
 - Machine learning: scikit-learn 1.9.1, Pandas 3.1.0, NumPy 2.4.6, Joblib, Matplotlib
-- Dataset download: ucimlrepo
 - Seed: `random_state = 42`
 
 ## Dataset, in the words you can say
@@ -178,14 +175,13 @@ The model only sees URL structure. It does not know brand names. HTTPS is one fe
 
 ## Run it
 
-Python 3.11 and Node.js. Internet is needed the first time, for the dataset download and `npm install`. After training, prediction works offline.
+Python 3.11 and Node.js. Internet is needed the first time to install dependencies. After training, prediction works offline.
 
 ```bash
 cd backend
 python3.11 -m venv .venv
 source .venv/bin/activate
 python -m pip install -r requirements.txt
-python download_data.py
 python train.py
 python app.py
 ```

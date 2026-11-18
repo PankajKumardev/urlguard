@@ -1,17 +1,3 @@
-"""Turn a URL string into a fixed list of simple numeric features.
-
-Training and live prediction both use features_from_normalized(). The function
-reads the URL text only. It does not open, visit, or download the address.
-
-Scheme rule:
-- A missing scheme is treated as https:// (example.com becomes https://example.com).
-- A leading // is treated as https:// (protocol-relative URL).
-- Only http and https are accepted.
-- A leading www. label is removed. Every legitimate URL in the PhiUSIIL file
-  starts with www, so keeping it would let the model treat that prefix as
-  proof of safety. www.x.com and x.com are scored as the same host.
-"""
-
 from urllib.parse import urlparse, urlunparse
 import ipaddress
 
@@ -163,22 +149,15 @@ def normalize_url(url, max_length=None):
         raise ValueError("Only HTTP and HTTPS URLs can be analyzed.")
     if not parsed.hostname:
         raise ValueError("This URL does not have a valid hostname.")
-    return strip_leading_www(text)
 
-
-# Remove www so both versions of a host use the same features
-def strip_leading_www(url):
-    """Drop a leading www. label. www.example.com and example.com become the same host."""
-    parsed = urlparse(url)
-    host = parsed.hostname or ""
-    if not host.lower().startswith("www."):
-        return url
-    netloc = parsed.netloc
-    prefix, _, hostport = netloc.rpartition("@")
+    # Remove a leading www. while keeping the port and user information.
+    if not parsed.hostname.startswith("www."):
+        return text
+    prefix, _, hostport = parsed.netloc.rpartition("@")
     if prefix:
         prefix = prefix + "@"
     if not hostport.lower().startswith("www."):
-        return url
+        return text
     return urlunparse(parsed._replace(netloc=prefix + hostport[4:]))
 
 
@@ -227,11 +206,16 @@ def features_from_normalized(normalized):
     for keyword in SUSPICIOUS_KEYWORDS:
         keyword_total += lowered.count(keyword)
 
-    values = {
+    digit_count = 0
+    for character in normalized:
+        if character.isdigit():
+            digit_count += 1
+
+    return {
         "url_length": len(normalized),
         "dot_count": normalized.count("."),
         "hyphen_count": normalized.count("-"),
-        "digit_count": sum(1 for character in normalized if character.isdigit()),
+        "digit_count": digit_count,
         "at_count": normalized.count("@"),
         "subdomain_count": count_subdomains(hostname, is_ip),
         "uses_https": 1 if parsed.scheme.lower() == "https" else 0,
@@ -241,7 +225,6 @@ def features_from_normalized(normalized):
         "equals_count": normalized.count("="),
         "path_length": len(parsed.path or ""),
     }
-    return {name: int(values[name]) for name in FEATURE_NAMES}
 
 
 # Put the numbers in the same order the model was trained with

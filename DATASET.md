@@ -14,7 +14,7 @@ Jaypee Institute of Information Technology, Noida · Computer Applications
 - How this copy was obtained: ucimlrepo fetch_ucirepo(id=967)
 - SHA-256 of `backend/data/urls.csv`: `0112072734d5e58a0c319e82f3aea97cb6ae2803c21a32d1d52446afa382c40d`
 
-The dataset was donated to UCI on 3 March 2024. The repository page describes 235,795 URL records, of which 134,850 are legitimate and 100,945 are phishing. The file saved by `download_data.py` has the same counts.
+The dataset was donated to UCI on 3 March 2024. The repository page describes 235,795 URL records, of which 134,850 are legitimate and 100,945 are phishing. The bundled CSV has the same counts.
 
 ## Label Mapping
 
@@ -42,17 +42,9 @@ Confirmation recorded for this file: The official UCI dataset page states 'Label
 
 `data/urls.csv` still stores the original UCI codes. The conversion happens in memory during training. The website and the metrics use the project codes.
 
-## Download
+## Dataset files
 
-From the `backend` directory, with the virtual environment activated:
-
-```bash
-python download_data.py
-```
-
-The script calls `fetch_ucirepo(id=967)` from the `ucimlrepo` package. It keeps two columns, `url` and `label`, and writes `data/urls.csv` plus `data/source_info.json`.
-
-If the automatic download fails, the script stops and tells you to download `PhiUSIIL_Phishing_URL_Dataset.csv` from the UCI page and save it as `backend/data/PhiUSIIL_Phishing_URL_Dataset.csv`. Run the script again after that. It will read the official file. It will not create substitute rows.
+Training reads the bundled `backend/data/urls.csv` and `backend/data/source_info.json`.
 
 ## Counts For This Project
 
@@ -82,7 +74,7 @@ Results in the model report describe this sample. They do not describe a test of
 
 The original PhiUSIIL table has 54 features. Many of them come from the webpage source, such as line counts, titles, iframes, and popup counts. URLGuard cannot see a page's source, because the safety rule is that a submitted URL is never opened, downloaded, or rendered.
 
-Training therefore ignores those columns. `download_data.py` does not even save them. Both training and the FastAPI prediction call `features_from_normalized(normalized)` and use the 12 numbers listed in `features.py`. If training had used page-content features, the saved model could not score a URL typed into the website.
+The bundled CSV keeps the URL and original label columns. Both training and the FastAPI prediction call `features_from_normalized(normalized)` and use the 12 numbers listed in `features.py`. If training had used page-content features, the saved model could not score a URL typed into the website.
 
 ## What This File Is Not
 

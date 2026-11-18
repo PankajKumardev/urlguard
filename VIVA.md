@@ -257,16 +257,6 @@ The keyword list is: login, verify, update, secure, account, confirm, password.
 
 ## Code Explanation
 
-### download_data.py
-
-1. `download_with_ucimlrepo` calls `fetch_ucirepo(id=967)`.
-2. If that fails, `read_manual_csv` looks for an official CSV that you downloaded by hand.
-3. If that file is missing too, the script prints the UCI link and stops. It does not invent rows.
-4. `build_frame_from_parts` keeps the URL column and the label column.
-5. The script checks that the class counts match the published 134,850 legitimate and 100,945 phishing rows.
-6. It records the UCI sentence that label 1 is legitimate and label 0 is phishing.
-7. `save_outputs` writes `data/urls.csv` and `data/source_info.json`. The CSV still uses the original labels.
-
 ### features.py
 
 1. `normalize_url` trims the text, rejects spaces and unknown schemes, and adds `https://` when the scheme is missing.
@@ -300,11 +290,9 @@ The keyword list is: login, verify, update, secure, account, confirm, password.
 6. `GET /api/model-info` returns the saved metrics, including the real test scores and the validation table.
 7. Empty, invalid, unsupported, and oversized URLs return a JSON error. A missing model returns a clear message instead of a fake score.
 
-`write_docs.py` is only the report writer. It does not fit a model.
-
 ## Full Project Workflow
 
-1. Dataset download with `download_data.py`.
+1. Load the bundled URL dataset and its label information.
 2. Cleaning in `train.py`.
 3. Label conversion to 0 = SAFE and 1 = PHISHING.
 4. Feature extraction with `features.py`.

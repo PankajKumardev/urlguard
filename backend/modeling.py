@@ -1,5 +1,3 @@
-"""Fit three classifiers on training rows and choose one using validation rows."""
-
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, classification_report, f1_score, precision_score, recall_score
@@ -12,7 +10,6 @@ RANDOM_STATE = 42
 NEAR_F1 = 0.005
 NEAR_RECALL = 0.01
 
-# Lower number means a simpler model. Used only when scores are nearly the same.
 SIMPLICITY = {
     "Logistic Regression": 0,
     "K-Nearest Neighbors": 1,
@@ -57,25 +54,19 @@ def select_best_model(rows):
 
 # Set up the three models before training
 def candidate_models():
-    # Pankaj: scale the features, then fit Logistic Regression
-    logistic = Pipeline([
-        ("scaler", StandardScaler()),
-        ("classifier", LogisticRegression(max_iter=1000, random_state=RANDOM_STATE)),
-    ])
-    # Pankaj: scale the features, then use five nearest neighbours
-    neighbors = Pipeline([
-        ("scaler", StandardScaler()),
-        ("classifier", KNeighborsClassifier(n_neighbors=5)),
-    ])
-    # Shivam: combine 100 decision trees
-    forest = RandomForestClassifier(
-        n_estimators=100, max_depth=20, random_state=RANDOM_STATE, n_jobs=-1
-    )
-    return [
-        ("Logistic Regression", logistic),
-        ("K-Nearest Neighbors", neighbors),
-        ("Random Forest", forest),
-    ]
+    return {
+        "Logistic Regression": Pipeline([
+            ("scaler", StandardScaler()),
+            ("classifier", LogisticRegression(max_iter=1000, random_state=RANDOM_STATE)),
+        ]),
+        "K-Nearest Neighbors": Pipeline([
+            ("scaler", StandardScaler()),
+            ("classifier", KNeighborsClassifier(n_neighbors=5)),
+        ]),
+        "Random Forest": RandomForestClassifier(
+            n_estimators=100, max_depth=20, random_state=RANDOM_STATE, n_jobs=-1
+        ),
+    }
 
 
 # Fit each model on training rows and compare validation predictions
@@ -83,14 +74,13 @@ def train_candidates(X_train, y_train, X_val, y_val):
     fitted = {}
     validation_rows = []
     validation_reports = []
-    for name, model in candidate_models():
+    for name, model in candidate_models().items():
         print("Training", name + "...")
         # Learn from training rows only
         model.fit(X_train, y_train)
         # Check this fitted model on separate validation rows
         predictions = model.predict(X_val)
-        scores = score_predictions(y_val, predictions)
-        scores["model"] = name
+        scores = {"model": name, **score_predictions(y_val, predictions)}
         validation_rows.append(scores)
         fitted[name] = model
         report = classification_report(

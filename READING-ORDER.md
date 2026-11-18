@@ -6,7 +6,7 @@ Read the project in two passes. First learn how a model is trained. Then follow 
 
 1. **backend/data/urls.csv** — Open a few rows. Each row has a URL and its original label. Use DATASET.md to understand the source.
 2. **backend/features.py** — Start with FEATURE_NAMES and SUSPICIOUS_KEYWORDS. These define the 12 measurements and the words we count.
-3. **backend/features.py** — Read normalize_url, then strip_leading_www. Follow how example.com becomes https://example.com.
+3. **backend/features.py** — Read normalize_url. Follow how example.com becomes https://example.com and how the function removes a leading www.
 4. **backend/features.py** — Read hostname_is_ip and count_subdomains. These help measure the hostname.
 5. **backend/features.py** — Read extract_features, features_from_normalized and feature_vector. Write down the 12 numbers for one URL in their declared order.
 6. **backend/train.py** — Read clean_dataset and convert_labels. Understand which rows are removed and why project label 1 means phishing.
@@ -34,9 +34,7 @@ Read the project in two passes. First learn how a model is trained. Then follow 
 
 ## Supporting files to read last
 
-25. **backend/download_data.py** — Downloads the UCI dataset and records its source and label meaning. The project already has the saved dataset.
-26. **backend/write_docs.py** — Turns training results into Markdown documents.
-27. **backend/tests/test_features.py** — Shows examples of expected URL measurements.
-28. **backend/tests/test_prediction.py** — Checks the model selection rules, saved artifacts and prediction API.
+25. **backend/tests/test_features.py** — Shows examples of expected URL measurements.
+26. **backend/tests/test_prediction.py** — Checks the model selection rules, saved artifacts and prediction API.
 
 Spend most of your ML preparation on steps 2–13 and 18–20. Use ROLES.md to see which model each member owns.
